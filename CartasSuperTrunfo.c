@@ -1,9 +1,20 @@
 #include <stdio.h>
 #include <string.h>
 
-// Definições de constantes (Legibilidade e Manutenibilidade)
+// Definições de constantes e mapeamento de atributos
 #define MAX_CODIGO 5
 #define MAX_NOME 50
+#define NUM_ATRIBUTOS 5 // Populacao, Area, PIB, Pontos Turisticos, Densidade
+
+// Mapeamento de texto para as opções do menu
+const char *NOME_ATRIBUTOS[] = {
+    "Nenhum (0)",
+    "Populacao (1)",
+    "Area (km²) (2)",
+    "PIB (bilhoes de reais) (3)",
+    "Pontos Turisticos (4)",
+    "Densidade Demografica (hab/km²) (5)"
+};
 
 // ----------------------------------------------------------------------
 // ESTRUTURA PARA REPRESENTAR UMA CARTA
@@ -16,180 +27,182 @@ typedef struct {
     float area_km2;
     float pib_bilhoes;
     int pontos_turisticos;
-    float densidade_demografica;
+    float densidade_demografica; // Atributo calculado
 } Carta;
 
 // ----------------------------------------------------------------------
-// FUNÇÕES AUXILIARES
+// FUNÇÕES AUXILIARES DE CONFIABILIDADE E CÁLCULO
 // ----------------------------------------------------------------------
 
-// Calcula a Densidade Demografica
-float calcular_densidade(int pop, float area) {
-    if (area > 0) {
-        return (float)pop / area;
-    }
-    return 0.0f;
-}
-
-// Limpa o buffer de entrada (crucial para evitar o bug do 'vazamento' de input)
+// Limpa o buffer de entrada (crucial para evitar vazamento de input)
 void limpar_buffer() {
     int c;
     while ((c = getchar()) != '\n' && c != EOF);
 }
 
-// Exibe o menu de comparacao (Usabilidade)
-void exibir_menu() {
-    printf("\n====================================================\n");
-    printf("        SUPER TRUNFO - ESCOLHA O ATRIBUTO\n");
-    printf("====================================================\n");
-    printf("Escolha o atributo para comparar as cartas:\n");
-    printf("1. Populacao\n");
-    printf("2. Area (km²)\n");
-    printf("3. PIB (bilhoes de reais)\n");
-    printf("4. Pontos Turisticos\n");
-    printf("5. Densidade Demografica (habitantes/km²)\n");
-    printf("----------------------------------------------------\n");
-    printf("Sua escolha (1 a 5): ");
+// Calcula a Densidade Demografica
+float calcular_densidade(int pop, float area) {
+    // Retorna 0.0f se a area for zero para evitar divisao por zero
+    return (area > 0) ? (float)pop / area : 0.0f; // Uso do Operador Ternário
 }
+
+// Obtem o valor do atributo da carta com base na escolha (para facilitar a soma)
+float obter_valor_atributo(const Carta *carta, int escolha) {
+    switch (escolha) {
+        case 1: return (float)carta->populacao;
+        case 2: return carta->area_km2;
+        case 3: return carta->pib_bilhoes;
+        case 4: return (float)carta->pontos_turisticos;
+        case 5: return carta->densidade_demografica;
+        default: return 0.0f;
+    }
+}
+
+// ----------------------------------------------------------------------
+// FUNÇÕES DE INTERAÇÃO (MENUS DINÂMICOS)
+// ----------------------------------------------------------------------
+
+// Exibe o menu dinâmico
+void exibir_menu_dinamico(int atributo_ignorado) {
+    printf("\nEscolha o atributo (1 a %d):\n", NUM_ATRIBUTOS);
+    for (int i = 1; i <= NUM_ATRIBUTOS; i++) {
+        // Logica dinamica: ignora a opcao ja escolhida
+        if (i != atributo_ignorado) {
+            printf("%d. %s\n", i, NOME_ATRIBUTOS[i]);
+        }
+    }
+    printf("Sua escolha: ");
+}
+
+// Obtem uma escolha valida do menu (Confiabilidade)
+int obter_escolha_valida(int atributo_ignorado) {
+    int escolha;
+    int valido = 0;
+    
+    // Loop simples para leitura (simplificacao: a complexidade esta no switch/if-else)
+    while (!valido) {
+        exibir_menu_dinamico(atributo_ignorado);
+        
+        if (scanf("%d", &escolha) != 1) {
+            printf("Entrada invalida. Digite um numero.\n");
+            limpar_buffer();
+            continue;
+        }
+        limpar_buffer();
+
+        if (escolha >= 1 && escolha <= NUM_ATRIBUTOS && escolha != atributo_ignorado) {
+            valido = 1;
+        } else if (escolha == atributo_ignorado) {
+            printf("ATENCAO: Este atributo ja foi escolhido. Selecione outro.\n");
+        } else {
+            printf("Opcao inexistente. Escolha um numero de 1 a %d.\n", NUM_ATRIBUTOS);
+        }
+    }
+    return escolha;
+}
+
 
 // ----------------------------------------------------------------------
 // FUNÇÃO PRINCIPAL
 // ----------------------------------------------------------------------
 int main() {
-    Carta carta1;
-    Carta carta2;
-
-    int escolha_atributo;
-    char nome_atributo[50];
-    float valor1 = 0.0f, valor2 = 0.0f;
-    int resultado_comparacao = 0; // 1 = C1 Vence, 2 = C2 Vence, 0 = Empate
+    // Variaveis de controle e cartas
+    Carta carta1, carta2;
+    int escolha1, escolha2;
+    float valor1_c1, valor2_c1, valor1_c2, valor2_c2;
+    float soma_c1, soma_c2;
 
     // ====================================================================
-    // 1. FASE DE CADASTRO (CORREÇÃO DE BUGS DE INPUT)
+    // 1. FASE DE CADASTRO (UNIFICADO DO NÍVEL NOVATO)
     // ====================================================================
     
     printf("====================================================\n");
     printf("        FASE 1: CADASTRO DE CARTAS\n");
     printf("====================================================\n\n");
     
-    // --- CADASTRO DA CARTA 1 ---
-    printf("--- Insira os dados da CARTA 1 ---\n");
+    // --- Lógica simplificada de cadastro (Manutenibilidade) ---
+    for (int i = 1; i <= 2; i++) {
+        Carta *c = (i == 1) ? &carta1 : &carta2;
+        printf("--- Insira os dados da CARTA %d ---\n", i);
+
+        printf("1. Estado (APENAS UMA letra de 'A' a 'H'): ");
+        scanf(" %c", &c->estado); 
+        limpar_buffer(); 
+
+        printf("2. Codigo da Carta (Ex: A01, B03): ");
+        scanf("%s", c->codigo); 
+        limpar_buffer(); 
+
+        printf("3. Nome da Cidade: ");
+        fgets(c->nome_cidade, MAX_NOME, stdin);
+        c->nome_cidade[strcspn(c->nome_cidade, "\n")] = 0;
+        
+        printf("4. Populacao (int): ");
+        scanf("%d", &c->populacao); limpar_buffer();
+
+        printf("5. Area (em km2 - float): ");
+        scanf("%f", &c->area_km2); limpar_buffer();
+
+        printf("6. PIB (em bilhoes de reais - float): ");
+        scanf("%f", &c->pib_bilhoes); limpar_buffer();
+
+        printf("7. Pontos Turisticos (int): ");
+        scanf("%d", &c->pontos_turisticos); limpar_buffer();
+    }
     
-    // CORREÇÃO 1: Usamos %[^\n] e limite de 1 caractere para ler apenas o primeiro char.
-    printf("1. Estado (APENAS UMA letra de 'A' a 'H'): ");
-    scanf(" %c", &carta1.estado); 
-    // Limpa o buffer imediatamente, descartando o restante da linha digitada 
-    // (Ex: se o usuario digitou "Rio de Janeiro" aqui, so 'R' sera lido).
-    limpar_buffer(); 
-
-    printf("2. Codigo da Carta (Ex: A01, B03): ");
-    scanf("%s", carta1.codigo); 
-    limpar_buffer(); // Limpa apos o scanf %s
-
-    // CORREÇÃO 2: fgets para o nome da cidade.
-    printf("3. Nome da Cidade: ");
-    fgets(carta1.nome_cidade, MAX_NOME, stdin);
-    carta1.nome_cidade[strcspn(carta1.nome_cidade, "\n")] = 0;
-    
-    printf("4. Populacao (numero de habitantes - int): ");
-    if (scanf("%d", &carta1.populacao) != 1) { limpar_buffer(); }
-
-    printf("5. Area (em km2 - float): ");
-    if (scanf("%f", &carta1.area_km2) != 1) { limpar_buffer(); }
-
-    printf("6. PIB (em bilhoes de reais - float): ");
-    if (scanf("%f", &carta1.pib_bilhoes) != 1) { limpar_buffer(); }
-
-    printf("7. Numero de Pontos Turisticos (int): ");
-    if (scanf("%d", &carta1.pontos_turisticos) != 1) { limpar_buffer(); }
-    limpar_buffer(); // Limpa no final do bloco.
-
-    // --- CADASTRO DA CARTA 2 ---
-    printf("\n----------------------------------------------------\n");
-    printf("--- Insira os dados da CARTA 2 ---\n");
-
-    printf("1. Estado (APENAS UMA letra de 'A' a 'H'): ");
-    scanf(" %c", &carta2.estado); 
-    limpar_buffer(); 
-
-    printf("2. Codigo da Carta (Ex: B02, C04): ");
-    scanf("%s", carta2.codigo); 
-    limpar_buffer(); 
-
-    printf("3. Nome da Cidade: ");
-    fgets(carta2.nome_cidade, MAX_NOME, stdin);
-    carta2.nome_cidade[strcspn(carta2.nome_cidade, "\n")] = 0;
-    
-    printf("4. Populacao (numero de habitantes - int): ");
-    if (scanf("%d", &carta2.populacao) != 1) { limpar_buffer(); }
-
-    printf("5. Area (em km2 - float): ");
-    if (scanf("%f", &carta2.area_km2) != 1) { limpar_buffer(); }
-
-    printf("6. PIB (em bilhoes de reais - float): ");
-    if (scanf("%f", &carta2.pib_bilhoes) != 1) { limpar_buffer(); }
-
-    printf("7. Numero de Pontos Turisticos (int): ");
-    if (scanf("%d", &carta2.pontos_turisticos) != 1) { limpar_buffer(); }
-    limpar_buffer(); 
-
-    // --- CÁLCULO DE ATRIBUTO ---
+    // --- Cálculo de Atributo ---
     carta1.densidade_demografica = calcular_densidade(carta1.populacao, carta1.area_km2);
     carta2.densidade_demografica = calcular_densidade(carta2.populacao, carta2.area_km2);
 
 
     // ====================================================================
-    // 2. FASE DE EXIBIÇÃO E INTERAÇÃO
+    // 2. FASE DE COMPARAÇÃO AVANÇADA (NÍVEL MESTRE)
     // ====================================================================
     
     printf("\n\n====================================================\n");
-    printf("        RELATÓRIO E COMPARACAO\n");
+    printf("        FASE 2: COMPARAÇÃO MULTI-ATRIBUTOS\n");
     printf("====================================================\n");
-    printf("\nCartas prontas para o jogo:\n");
-    printf("1. %s (Codigo: %s)\n", carta1.nome_cidade, carta1.codigo);
-    printf("2. %s (Codigo: %s)\n", carta2.nome_cidade, carta2.codigo);
 
+    // --- Escolha do Primeiro Atributo ---
+    printf("\n>>> ESCOLHA DO PRIMEIRO ATRIBUTO <<<\n");
+    escolha1 = obter_escolha_valida(0); // 0 = Nenhum atributo ignorado
 
-    // --- Menu e Leitura da Escolha ---
-    exibir_menu();
-    if (scanf("%d", &escolha_atributo) != 1) { limpar_buffer(); }
+    // --- Escolha do Segundo Atributo (Dinâmico) ---
+    printf("\n>>> ESCOLHA DO SEGUNDO ATRIBUTO <<<\n");
+    escolha2 = obter_escolha_valida(escolha1); // Ignora a primeira escolha
 
-    // --- Logica de Comparacao com SWITCH e IF-ELSE ---
-    switch (escolha_atributo) {
-        case 1: strcpy(nome_atributo, "Populacao"); valor1 = (float)carta1.populacao; valor2 = (float)carta2.populacao; 
-            if (valor1 > valor2) { resultado_comparacao = 1; } else if (valor2 > valor1) { resultado_comparacao = 2; } break;
-        case 2: strcpy(nome_atributo, "Area (km²)"); valor1 = carta1.area_km2; valor2 = carta2.area_km2;
-            if (valor1 > valor2) { resultado_comparacao = 1; } else if (valor2 > valor1) { resultado_comparacao = 2; } break;
-        case 3: strcpy(nome_atributo, "PIB (bilhoes de reais)"); valor1 = carta1.pib_bilhoes; valor2 = carta2.pib_bilhoes;
-            if (valor1 > valor2) { resultado_comparacao = 1; } else if (valor2 > valor1) { resultado_comparacao = 2; } break;
-        case 4: strcpy(nome_atributo, "Pontos Turisticos"); valor1 = (float)carta1.pontos_turisticos; valor2 = (float)carta2.pontos_turisticos;
-            if (valor1 > valor2) { resultado_comparacao = 1; } else if (valor2 > valor1) { resultado_comparacao = 2; } break;
-        case 5: // REGRA ESPECIAL: MENOR valor vence
-            strcpy(nome_atributo, "Densidade Demografica (hab/km²)"); valor1 = carta1.densidade_demografica; valor2 = carta2.densidade_demografica;
-            if (valor1 < valor2) { resultado_comparacao = 1; } else if (valor2 < valor1) { resultado_comparacao = 2; } break;
-        default: strcpy(nome_atributo, "Opcao Invalida"); resultado_comparacao = -1; break;
-    }
+    // --- Obtenção dos Valores e Soma ---
+    valor1_c1 = obter_valor_atributo(&carta1, escolha1);
+    valor2_c1 = obter_valor_atributo(&carta1, escolha2);
+    valor1_c2 = obter_valor_atributo(&carta2, escolha1);
+    valor2_c2 = obter_valor_atributo(&carta2, escolha2);
 
-    // --- Exibição do Resultado Final ---
+    // Soma dos atributos (Requisito Funcional)
+    soma_c1 = valor1_c1 + valor2_c1;
+    soma_c2 = valor1_c2 + valor2_c2;
+
+    // --- Exibição e Resultado Final (Requisito Funcional) ---
     printf("\n====================================================\n");
+    printf("        RESULTADO FINAL DA RODADA\n");
+    printf("====================================================\n");
     
-    if (resultado_comparacao == -1) {
-        printf("ERRO: Escolha de atributo invalida. Reinicie o programa.\n");
-    } else {
-        printf("        RESULTADO DA RODADA\n");
-        printf("====================================================\n");
-        printf("Atributo: %s\n", nome_atributo);
-        printf("Valor %s: %.2f\n", carta1.nome_cidade, valor1);
-        printf("Valor %s: %.2f\n", carta2.nome_cidade, valor2);
+    printf("Carta 1 (%s) | Atributo 1 (%s): %.2f | Atributo 2 (%s): %.2f\n", 
+           carta1.nome_cidade, NOME_ATRIBUTOS[escolha1], valor1_c1, NOME_ATRIBUTOS[escolha2], valor2_c1);
+    printf("Carta 2 (%s) | Atributo 1 (%s): %.2f | Atributo 2 (%s): %.2f\n", 
+           carta2.nome_cidade, NOME_ATRIBUTOS[escolha1], valor1_c2, NOME_ATRIBUTOS[escolha2], valor2_c2);
+    
+    printf("\nSoma dos Atributos:\n");
+    printf("Soma %s: %.2f\n", carta1.nome_cidade, soma_c1);
+    printf("Soma %s: %.2f\n", carta2.nome_cidade, soma_c2);
 
-        printf("\n--- VENCEDOR ---\n");
-        if (resultado_comparacao == 1) {
-            printf("A Carta 1 (%s) VENCEU!\n", carta1.nome_cidade);
-        } else if (resultado_comparacao == 2) {
-            printf("A Carta 2 (%s) VENCEU!\n", carta2.nome_cidade);
-        } else {
-            printf("EMPATE!\n");
-        }
+    // --- Decisão Final (Regras: Maior Soma Vence / Empate) ---
+    printf("\n--- VENCEDOR DA RODADA ---\n");
+    if (soma_c1 > soma_c2) {
+        printf("A Carta 1 (%s) VENCEU com a soma de %.2f!\n", carta1.nome_cidade, soma_c1);
+    } else if (soma_c2 > soma_c1) {
+        printf("A Carta 2 (%s) VENCEU com a soma de %.2f!\n", carta2.nome_cidade, soma_c2);
+    } else {
+        printf("EMPATE! As cartas somaram o mesmo valor (%.2f).\n", soma_c1);
     }
     printf("====================================================\n");
 
